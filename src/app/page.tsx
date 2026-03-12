@@ -1,66 +1,70 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { readDatabase, searchPages } from "@/lib/storage";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+type HomeProps = {
+  searchParams?: Promise<{
+    q?: string;
+  }>;
+};
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const query = params?.q?.trim() ?? "";
+  const database = await readDatabase();
+  const results = searchPages(database.pages, query).slice(0, 24);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="shell shell-minimal">
+      <section className="search-panel search-panel-minimal">
+        <form action="/" className="search-form">
+          <input
+            aria-label="Search indexed AI generated pages"
+            defaultValue={query}
+            name="q"
+            placeholder="Search AI"
+            type="search"
+          />
+          <button className="button" type="submit">
+            Search
+          </button>
+        </form>
+      </section>
+
+      {query ? (
+        <section className="results-column results-column-minimal">
+          <p className="search-meta search-meta-minimal">
+            {results.length} results across {database.sites.length} sites and {database.pages.length} indexed pages.
           </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          {results.length > 0 ? (
+            results.map((page) => (
+              <article className="panel result-card" key={page.id}>
+                <div className="row">
+                  <span className="badge">AI Generated</span>
+                  <span className="badge badge-neutral">{page.siteName}</span>
+                </div>
+                <h2>
+                  <a href={page.url} rel="noreferrer" target="_blank">
+                    {page.title}
+                  </a>
+                </h2>
+                <p className="result-meta">{page.description || "No description provided."}</p>
+                <a className="result-url" href={page.url} rel="noreferrer" target="_blank">
+                  {page.url}
+                </a>
+                <p className="result-summary">{page.summary}</p>
+              </article>
+            ))
+          ) : (
+            <article className="panel empty-state">
+              <h2>No matches yet</h2>
+              <p className="status-note">
+                Try a broader search or come back after more sites are indexed.
+              </p>
+            </article>
+          )}
+        </section>
+      ) : null}
+    </main>
   );
 }
