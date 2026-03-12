@@ -114,6 +114,10 @@ function collapseWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
 }
 
+function normalizedTextMatch(left: string, right: string) {
+  return collapseWhitespace(left).toLowerCase() === collapseWhitespace(right).toLowerCase();
+}
+
 function summarizeText(text: string, maxLength = 280) {
   if (text.length <= maxLength) {
     return text;
@@ -173,7 +177,10 @@ function extractPageRecord(html: string, pageUrl: string, siteId: string, direct
     $("main").text() || $("article").text() || $("body").text() || "",
   );
   const content = summarizeText(textSource, 2200);
-  const summary = summarizeText(description || textSource || title, 300);
+  const summarySource = description && normalizedTextMatch(description, textSource)
+    ? ""
+    : textSource;
+  const summary = summarizeText(summarySource || title, 300);
   const hostname = new URL(pageUrl).hostname.replace(/^www\./, "");
   const indexedAt = new Date().toISOString();
 

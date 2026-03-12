@@ -9,6 +9,10 @@ type HomeProps = {
   }>;
 };
 
+function normalizeSnippet(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = searchParams ? await searchParams : undefined;
   const query = params?.q?.trim() ?? "";
@@ -40,24 +44,35 @@ export default async function Home({ searchParams }: HomeProps) {
             {results.length} results across {database.sites.length} sites and {database.pages.length} indexed pages.
           </p>
           {results.length > 0 ? (
-            results.map((page) => (
-              <article className="panel result-card" key={page.id}>
-                <div className="row">
-                  <span className="badge">AI Generated</span>
-                  <span className="badge badge-neutral">{page.siteName}</span>
-                </div>
-                <h2>
-                  <a href={page.url} rel="noreferrer" target="_blank">
-                    {page.title}
+            results.map((page) => {
+              const normalizedDescription = normalizeSnippet(page.description);
+              const normalizedSummary = normalizeSnippet(page.summary);
+              const showDescription = Boolean(page.description);
+              const showSummary = Boolean(page.summary) && normalizedSummary !== normalizedDescription;
+
+              return (
+                <article className="panel result-card" key={page.id}>
+                  <div className="row">
+                    <span className="badge">AI Generated</span>
+                    <span className="badge badge-neutral">{page.siteName}</span>
+                  </div>
+                  <h2>
+                    <a href={page.url} rel="noreferrer" target="_blank">
+                      {page.title}
+                    </a>
+                  </h2>
+                  {showDescription ? (
+                    <p className="result-meta">{page.description}</p>
+                  ) : (
+                    <p className="result-meta">No description provided.</p>
+                  )}
+                  <a className="result-url" href={page.url} rel="noreferrer" target="_blank">
+                    {page.url}
                   </a>
-                </h2>
-                <p className="result-meta">{page.description || "No description provided."}</p>
-                <a className="result-url" href={page.url} rel="noreferrer" target="_blank">
-                  {page.url}
-                </a>
-                <p className="result-summary">{page.summary}</p>
-              </article>
-            ))
+                  {showSummary ? <p className="result-summary">{page.summary}</p> : null}
+                </article>
+              );
+            })
           ) : (
             <article className="panel empty-state">
               <h2>No matches yet</h2>
