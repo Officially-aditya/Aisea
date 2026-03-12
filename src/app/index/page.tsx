@@ -22,7 +22,7 @@ export default function IndexLandingPage() {
           <Link href="/about">About</Link>
           <Link href="/docs">Docs</Link>
           <Link href="/submit">Submit</Link>
-          <Link href="/admin">Admin</Link>
+          <Link href="/admin" prefetch={false}>Admin</Link>
         </div>
       </nav>
 

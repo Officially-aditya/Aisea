@@ -34,7 +34,7 @@ export default async function FaqPage({ searchParams }: FaqPageProps) {
           <Link href="/docs">Docs</Link>
           <Link href="/index">Get indexed</Link>
           <Link href="/submit">Submit</Link>
-          <Link href="/admin">Admin</Link>
+          <Link href="/admin" prefetch={false}>Admin</Link>
         </div>
       </nav>
 

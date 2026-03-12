@@ -67,7 +67,7 @@ export function DocsLayout({ activePage, children }: DocsLayoutProps) {
             <Link href="/">Search</Link>
             <Link href="/about">About</Link>
             <Link href="/faq">FAQ</Link>
-            <Link href="/admin">Admin</Link>
+            <Link href="/admin" prefetch={false}>Admin</Link>
           </nav>
         </div>
       </header>

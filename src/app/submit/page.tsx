@@ -16,7 +16,7 @@ export default function SubmitPage() {
           <Link href="/docs">Docs</Link>
           <Link href="/faq">FAQ</Link>
           <Link href="/index">Get indexed</Link>
-          <Link href="/admin">Admin</Link>
+          <Link href="/admin" prefetch={false}>Admin</Link>
         </div>
       </nav>
 

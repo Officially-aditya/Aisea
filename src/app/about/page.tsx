@@ -26,7 +26,7 @@ export default async function AboutPage() {
           <Link href="/faq">FAQ</Link>
           <Link href="/index">Get indexed</Link>
           <Link href="/submit">Submit</Link>
-          <Link href="/admin">Admin</Link>
+          <Link href="/admin" prefetch={false}>Admin</Link>
         </div>
       </nav>
 
