@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { BrandLink } from "@/components/Brand";
+
 type DocsPage = "overview" | "architecture" | "actions";
 
 type DocsLayoutProps = {
@@ -56,10 +58,7 @@ export function DocsLayout({ activePage, children }: DocsLayoutProps) {
 
       <header className="docs-topbar">
         <div className="docs-topbar-inner">
-          <Link className="brand" href="/docs">
-            <span className="brand-mark">SEA</span>
-            <span>AISEA Docs</span>
-          </Link>
+          <BrandLink href="/docs" label="AISEA Docs" />
           <Link aria-label="Search SEA" className="docs-search-shell" href="/">
             <span className="docs-search-text">Search docs, APIs, and flows</span>
             <span className="docs-keycap">⌘K</span>

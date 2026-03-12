@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandLink } from "@/components/Brand";
 import { SubmissionForm } from "@/components/SubmissionForm";
 
 export const dynamic = "force-dynamic";
@@ -8,10 +9,7 @@ export default function SubmitPage() {
   return (
     <main className="shell submit-shell">
       <nav className="nav">
-        <Link className="brand" href="/">
-          <span className="brand-mark">SEA</span>
-          <span>Search Engine for AI Generated Content</span>
-        </Link>
+        <BrandLink href="/" label="Search Engine for AI Generated Content" />
         <div className="nav-links">
           <Link href="/">Search</Link>
           <Link href="/about">About</Link>

@@ -1,4 +1,5 @@
 const baseUrl = process.env.SEA_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
+const cronSecret = process.env.CRON_SECRET;
 const targetUrl = process.argv[2];
 
 async function run() {
@@ -12,6 +13,7 @@ async function run() {
     method: "GET",
     headers: {
       accept: "application/json",
+      ...(cronSecret ? { authorization: `Bearer ${cronSecret}` } : {}),
     },
   });
 

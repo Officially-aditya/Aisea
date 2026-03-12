@@ -1,9 +1,58 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { crawlSite } from "@/lib/crawler";
 import { readSeeds, recordCrawlRun, upsertIndexedSite } from "@/lib/storage";
 
 export const runtime = "nodejs";
+
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+
+  if (!authorization?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authorization.slice(7).trim();
+}
+
+function isAuthorizedCrawlRequest(request: Request) {
+  const secret = process.env.CRON_SECRET;
+
+  if (!secret) {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  const token = getBearerToken(request);
+
+  if (!token) {
+    return false;
+  }
+
+  const secretBuffer = Buffer.from(secret);
+  const tokenBuffer = Buffer.from(token);
+
+  if (secretBuffer.length !== tokenBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(secretBuffer, tokenBuffer);
+}
+
+function getUnauthorizedResponse() {
+  return NextResponse.json(
+    { error: "Unauthorized crawl request." },
+    { status: 401 },
+  );
+}
+
+function getMisconfiguredResponse() {
+  return NextResponse.json(
+    { error: "CRON_SECRET must be configured in production." },
+    { status: 503 },
+  );
+}
 
 async function runCrawl(urls: string[]) {
   const results = [] as Array<{
@@ -42,6 +91,14 @@ async function runCrawl(urls: string[]) {
 }
 
 export async function GET(request: Request) {
+  if (!process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
+    return getMisconfiguredResponse();
+  }
+
+  if (!isAuthorizedCrawlRequest(request)) {
+    return getUnauthorizedResponse();
+  }
+
   const { searchParams } = new URL(request.url);
   const singleUrl = searchParams.get("url")?.trim();
   const seeds = singleUrl ? [singleUrl] : await readSeeds();
@@ -67,6 +124,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
+    return getMisconfiguredResponse();
+  }
+
+  if (!isAuthorizedCrawlRequest(request)) {
+    return getUnauthorizedResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as { url?: string } | null;
   const seeds = body?.url?.trim() ? [body.url.trim()] : await readSeeds();
   const results = await runCrawl(seeds);

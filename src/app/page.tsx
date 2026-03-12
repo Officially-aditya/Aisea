@@ -1,3 +1,4 @@
+import { BrandLink } from "@/components/Brand";
 import { readDatabase, searchPages } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className="shell shell-minimal">
+      <BrandLink className="brand-home" href="/" label="AISEA" />
+
       <section className="search-panel search-panel-minimal">
         <form action="/" className="search-form">
           <input

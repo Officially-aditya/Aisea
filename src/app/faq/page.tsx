@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { BrandLink } from "@/components/Brand";
 import { filterFaqSections } from "@/lib/faq";
 import { createPageMetadata } from "@/lib/metadata";
 
@@ -26,10 +27,7 @@ export default async function FaqPage({ searchParams }: FaqPageProps) {
   return (
     <main className="shell">
       <nav className="nav">
-        <Link className="brand" href="/">
-          <span className="brand-mark">SEA</span>
-          <span>Search Engine for AI Generated Content</span>
-        </Link>
+        <BrandLink href="/" label="Search Engine for AI Generated Content" />
         <div className="nav-links">
           <Link href="/">Search</Link>
           <Link href="/about">About</Link>

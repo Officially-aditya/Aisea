@@ -171,6 +171,7 @@ You must define these environment variables:
 
 1. `SEA_ADMIN_USERNAME`
 2. `SEA_ADMIN_PASSWORD`
+3. `CRON_SECRET` for protected crawl jobs in production
 
 If they are missing, the admin route fails closed and returns `503` instead of exposing the page.
 
@@ -184,6 +185,8 @@ Typical workflow:
 2. Visit the site in the browser.
 3. Trigger crawls manually with `npm run crawl`.
 4. Optionally schedule the crawl command with cron.
+
+If `CRON_SECRET` is set locally, `npm run crawl` will automatically send it as a bearer token to `/api/crawl`.
 
 Example cron entry to crawl every 6 hours:
 
@@ -203,7 +206,8 @@ Recommended deployment setup:
 2. Add a Redis integration in Vercel.
 3. Confirm Vercel provides either `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, or the `KV_REST_API_*` equivalents.
 4. Set `SEA_ADMIN_USERNAME` and `SEA_ADMIN_PASSWORD` in the Vercel project environment.
-5. Keep the existing cron in `vercel.json` if you want scheduled crawling.
+5. Set `CRON_SECRET` in the Vercel project environment so Vercel Cron can authenticate to `/api/crawl`.
+6. Keep the existing cron in `vercel.json` if you want scheduled crawling.
 
 That gives SEA durable indexed data on Vercel without moving to Postgres yet.
 
