@@ -4,6 +4,9 @@ import { createStableId, type IndexedPage, type IndexedSite } from "@/lib/storag
 
 const USER_AGENT = "SEA/0.1 (+https://sea.local)";
 const HTML_EXTENSIONS_TO_SKIP = /\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|xml|json|txt|mp3|mp4|mov|avi|woff2?|ttf)$/i;
+const DEFAULT_MAX_PAGES = Number(process.env.SEA_MAX_CRAWL_PAGES ?? 50);
+const DEFAULT_MAX_SITEMAP_PAGES = Number(process.env.SEA_MAX_SITEMAP_PAGES ?? 500);
+const MAX_SITEMAP_FILES = 8;
 
 type RobotsDirective = {
   enabled: boolean;
@@ -110,6 +113,22 @@ async function fetchText(url: string) {
   };
 }
 
+function clampMaxPages(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 50;
+  }
+
+  return Math.min(Math.max(Math.floor(value), 1), 250);
+}
+
+function clampSitemapPages(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 500;
+  }
+
+  return Math.min(Math.max(Math.floor(value), 1), 500);
+}
+
 function collapseWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
 }
@@ -164,6 +183,72 @@ function extractInternalLinks(html: string, pageUrl: string, limit: number) {
   return [...links];
 }
 
+function extractSitemapUrlsFromRobots(robotsContent: string) {
+  return robotsContent
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^sitemap:/i.test(line))
+    .map((line) => parseDirectiveValue(line.slice(line.indexOf(":") + 1)))
+    .filter(Boolean);
+}
+
+function normalizeSameOriginUrl(url: string, origin: string) {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+
+    if (parsed.origin !== origin || HTML_EXTENSIONS_TO_SKIP.test(parsed.pathname)) {
+      return null;
+    }
+
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSitemapUrls(
+  sitemapUrl: string,
+  origin: string,
+  maxPages: number,
+  visitedSitemaps = new Set<string>(),
+): Promise<string[]> {
+  if (visitedSitemaps.has(sitemapUrl) || visitedSitemaps.size >= MAX_SITEMAP_FILES) {
+    return [];
+  }
+
+  visitedSitemaps.add(sitemapUrl);
+
+  try {
+    const { body } = await fetchText(sitemapUrl);
+    const $ = load(body, { xml: true });
+    const sitemapNodes = $("sitemap > loc");
+
+    if (sitemapNodes.length > 0) {
+      const nestedUrls = sitemapNodes
+        .map((_, element) => collapseWhitespace($(element).text()))
+        .get()
+        .filter(Boolean)
+        .slice(0, MAX_SITEMAP_FILES - visitedSitemaps.size + 1);
+
+      const nestedResults = await Promise.all(
+        nestedUrls.map((nestedUrl) => fetchSitemapUrls(nestedUrl, origin, maxPages, visitedSitemaps)),
+      );
+
+      return [...new Set(nestedResults.flat())].slice(0, maxPages);
+    }
+
+    return $("url > loc")
+      .map((_, element) => collapseWhitespace($(element).text()))
+      .get()
+      .map((url) => normalizeSameOriginUrl(url, origin))
+      .filter((url): url is string => Boolean(url))
+      .slice(0, maxPages);
+  } catch {
+    return [];
+  }
+}
+
 function extractPageRecord(html: string, pageUrl: string, siteId: string, directive: RobotsDirective): IndexedPage {
   const $ = load(html);
   const title = collapseWhitespace($("title").first().text()) || new URL(pageUrl).hostname;
@@ -201,9 +286,11 @@ function extractPageRecord(html: string, pageUrl: string, siteId: string, direct
   };
 }
 
-export async function crawlSite(inputUrl: string, maxPages = 8): Promise<CrawlOutcome> {
+export async function crawlSite(inputUrl: string, maxPages = DEFAULT_MAX_PAGES): Promise<CrawlOutcome> {
   const normalizedUrl = normalizeUrl(inputUrl);
   const robotsUrl = buildRobotsUrl(normalizedUrl);
+  const crawlLimit = clampMaxPages(maxPages);
+  const sitemapLimit = clampSitemapPages(DEFAULT_MAX_SITEMAP_PAGES);
 
   try {
     const robotsResponse = await fetchText(robotsUrl);
@@ -220,12 +307,26 @@ export async function crawlSite(inputUrl: string, maxPages = 8): Promise<CrawlOu
       };
     }
 
-    const queue = [normalizedUrl];
+    const origin = new URL(normalizedUrl).origin;
+    const sitemapUrlsFromRobots = extractSitemapUrlsFromRobots(robotsResponse.body);
+    const sitemapCandidates = sitemapUrlsFromRobots.length > 0
+      ? sitemapUrlsFromRobots
+      : [`${origin}/sitemap.xml`];
+    const sitemapResults = await Promise.all(
+      sitemapCandidates.slice(0, MAX_SITEMAP_FILES).map((url) => fetchSitemapUrls(url, origin, sitemapLimit)),
+    );
+    const hasSitemapUrls = sitemapResults.some((urls) => urls.length > 0);
+    const effectiveLimit = hasSitemapUrls ? sitemapLimit : crawlLimit;
+    const queue = [
+      normalizedUrl,
+      ...sitemapResults.flat(),
+    ].filter((url, index, allUrls) => allUrls.indexOf(url) === index);
     const visited = new Set<string>();
+    const discovered = new Set(queue);
     const pages: IndexedPage[] = [];
     const siteId = createStableId(new URL(normalizedUrl).hostname.replace(/^www\./, ""));
 
-    while (queue.length > 0 && pages.length < maxPages) {
+    while (queue.length > 0 && pages.length < effectiveLimit) {
       const nextUrl = queue.shift();
       if (!nextUrl || visited.has(nextUrl)) {
         continue;
@@ -242,8 +343,9 @@ export async function crawlSite(inputUrl: string, maxPages = 8): Promise<CrawlOu
         const page = extractPageRecord(pageResponse.body, pageResponse.finalUrl, siteId, directive);
         pages.push(page);
 
-        for (const link of extractInternalLinks(pageResponse.body, pageResponse.finalUrl, maxPages * 2)) {
-          if (!visited.has(link) && queue.length + pages.length < maxPages * 3) {
+        for (const link of extractInternalLinks(pageResponse.body, pageResponse.finalUrl, effectiveLimit * 4)) {
+          if (!visited.has(link) && !discovered.has(link) && queue.length + pages.length < effectiveLimit * 8) {
+            discovered.add(link);
             queue.push(link);
           }
         }
