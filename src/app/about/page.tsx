@@ -32,6 +32,10 @@ export default async function AboutPage() {
 
       <section className="hero">
         <span className="eyebrow">About</span>
+        <div className="about-toast" role="status">
+          <span className="about-toast-dot" />
+          <span>Zeno</span>
+        </div>
         <h1>Search sites that explicitly publish AI-generated work.</h1>
         <p>
           AISEA checks for a dedicated robots.txt directive, indexes sites that opt in,

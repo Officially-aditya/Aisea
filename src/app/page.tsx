@@ -1,4 +1,5 @@
 import { BrandLink } from "@/components/Brand";
+import Link from "next/link";
 import { readDatabase, searchPages } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,13 @@ export default async function Home({ searchParams }: HomeProps) {
           )}
         </section>
       ) : null}
+
+      <footer className="home-footer">
+        <span>AISEA</span>
+        <Link href="/docs">Docs</Link>
+        <Link href="/about">About</Link>
+        <Link href="/faq">FAQ</Link>
+      </footer>
     </main>
   );
 }
