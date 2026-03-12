@@ -251,6 +251,8 @@ async function fetchSitemapUrls(
 
 function extractPageRecord(html: string, pageUrl: string, siteId: string, directive: RobotsDirective): IndexedPage {
   const $ = load(html);
+  $("script, style, noscript, template, svg, iframe").remove();
+
   const title = collapseWhitespace($("title").first().text()) || new URL(pageUrl).hostname;
   const description = collapseWhitespace(
     $("meta[name='description']").attr("content") ??

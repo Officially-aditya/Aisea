@@ -14,6 +14,12 @@ function normalizeSnippet(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+function isStructuredDataSnippet(value: string) {
+  const normalized = normalizeSnippet(value);
+
+  return normalized.startsWith('{"@context"') || normalized.includes("https://schema.org") || normalized.includes('"@type"');
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = searchParams ? await searchParams : undefined;
   const query = params?.q?.trim() ?? "";
@@ -49,7 +55,9 @@ export default async function Home({ searchParams }: HomeProps) {
               const normalizedDescription = normalizeSnippet(page.description);
               const normalizedSummary = normalizeSnippet(page.summary);
               const showDescription = Boolean(page.description);
-              const showSummary = Boolean(page.summary) && normalizedSummary !== normalizedDescription;
+              const showSummary = Boolean(page.summary)
+                && normalizedSummary !== normalizedDescription
+                && !isStructuredDataSnippet(page.summary);
 
               return (
                 <article className="panel result-card" key={page.id}>
